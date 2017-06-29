@@ -3,9 +3,6 @@ import os
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 from pygame.locals import *
-from pygamehelper import *
-
-from Bug import PGBug
 
 BLACK = pygame.Color(0,0,0)
 WHITE = pygame.Color(255,255,255)
@@ -15,6 +12,13 @@ GREEN = pygame.Color(0,0,255)
 DISPLAY_WIDTH = 600
 DISPLAY_HEIGHT = 400
 
+#Helper class that controls interaction loop in Pygame
+from pygamehelper import *
+
+#Use the pygame version of the bug so can display in pygame
+from Bug import PGBug
+
+#main control loop of the pygame
 class BugSim( PygameHelper ):
 
 	#put one bug in the middle of the screen

@@ -4,12 +4,10 @@
 #fix z axis flip from pygame to local coord system
 #have a scale for drawing in pygame that is independent of bug kinematics
 #have a sample period so can do velocity
-#simulate collision dynamics to mimic accelerameter
+#simulate collision dynamics to mimic accelerometer
 #kinematics for zumo
+#kinematics for gopigo
 
-#food
-#objects
-#eyes
 #range
 #collisions could do damage
 #minimize energy
@@ -42,8 +40,6 @@ class Color:
 	RED = (255,0,0)
 	BLUE = (0,255,0)
 	GREEN = (0,0,255)
-
-
 
 
 class Bug:
