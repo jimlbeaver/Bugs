@@ -3,6 +3,8 @@
 #import logging
 #fix z axis flip from pygame to local coord system
 #have a scale for drawing in pygame that is independent of bug kinematics
+
+
 #have a sample period so can do velocity
 #simulate collision dynamics to mimic accelerometer
 #kinematics for zumo
@@ -10,12 +12,9 @@
 
 #range
 #collisions could do damage
-#minimize energy
+#minimize energy spent
+#maximize health
 
-import numpy as np
-import transforms3d.affines as AFF 
-import transforms3d.euler as E
-import random as rand
 
 #Bug
 #knows how to move
@@ -33,114 +32,86 @@ import random as rand
 #type
 #callback method
 
-#Color class so can separate out code from PG specific stuff.
-class Color:
-	BLACK = (0,0,0)
-	WHITE = (255,255,255)
-	RED = (255,0,0)
-	BLUE = (0,255,0)
-	GREEN = (0,0,255)
+
+class Obstacle( BWObject ): #yellow
+	pass
+
+class Meat( BWObject ): #brown
+	pass
+
+class Plant( BWObject ): #dark green
+	pass
+#---------
 
 
-class Bug:
+class BugEye( BWObject ):
+	def __init__( Self, pos_transform = BugWorld.IDENTITY, size = 1 ):
+		Self.name = "E"
+		super()._init_( pos_transform, name )
+		Self.size = size
+		Self.color = Color.GREY 
 
-	#Going to use 3D matrices even if in 2d
-	#See http://matthew-brett.github.io/transforms3d/ for details on the lib used
+	def update( Self, base ):
+		#eyes don't move independent of bug, so relative pos won't change.
+		Self.set_abs_position( base ) #update it based on the passed in ref frame
 
-	#Bug's local coord frame is in the x,y plane and faces in the x direction.  
-	#Positive rotation follow RHR, x-axis into the y-axis...so z is up.
+class Bug ( BWObject ):
 
 	DEFAULT_TURN_AMT = np.deg2rad(30) # turns are in radians
 	DEFAULT_MOVE_AMT = 5
-	
-	def __init__( Self, starting_x = 0, starting_y = 0, starting_z = 0, starting_theta = 0 ):
-		Self.set_position( starting_x, starting_y, starting_z, starting_theta)
 
-	def __repr__(Self):
-		return( "position={}".format(Self.position) )
+	def __init__( Self, initial_pos, name = "Bug" ):
+		super()._init_( initial_pos, name )
+		Self.size = 10 #override default and set the intial radius of bug
+		Self.color = Color.PINK #override default and set the initial color of a default bug
 
-	def set_position( Self, x=0, y=0, z=0, theta=0 ):
-		#assume the angle is measured in the x,y plane around z axis
+		#add the eyes for a default bug
+		Self.RIGHT_EYE_LOC = BugWorld.get_pos_transform( Self.size, 0, np.deg2rad(-10) ) #put eye center on circumference
+		Self.LEFT_EYE_LOC = BugWorld.get_pos_transform( Self.size, 0, np.deg2rad(10) )
+		Self.EYE_SIZE = int(Self.size * 0.2) #set a percentage the size of the bug
+		#instantiate the eyes
+		Self.RightEye = BugEye( Self.RIGHT_EYE_LOC, Self.EYE_SIZE ) 
+		Self.LeftEye = BugEye( Self.LEFT_EYE_LOC , Self.EYE_SIZE )
 
-		T = [x, y, z] #create a translation matrix
-		R = E.euler2mat( 0, 0, theta ) #create a rotation matrix around Z axis.
-		Z = [1, 1, 1] # zooms...only included because API required it... will ignore the skew
-		Self.position = AFF.compose(T, R, Z)
+	def update( Self, base ):
+		Self.wander() #changes the relative position
+		Self.set_abs_position( base )
+		Self.RightEye.update( Self.abs_position )
+		Self.LeftEye.update( Self.abs_position )
+
+	def draw( Self, surface ):
+		super().draw(surface)
+		Self.RightEye.draw(surface)
+		Self.LeftEye.draw(surface)
 
 	def move_forward( Self, amount_to_move = DEFAULT_MOVE_AMT ):
 		#assume bug's 'forward' is along the x direction in local coord frame
-		mF = np.identity(4)
-		mF[0][3] = amount_to_move 
-		Self.position = np.matmul( Self.position, mF ) #translate the position by the translation transformation
+		tM = BW.get_pos_transform( x=amount_to_move, y=0, z=0, theta=0 ) #create an incremental translation
+		Self.set_rel_position ( np.matmul(Self.rel_postion, tM)) #update the new position
 
 	def turn_left( Self, theta = DEFAULT_TURN_AMT ):
-		#create a rotation matrix around z
-		#positive angle means CCW from x axis
-		T = [0, 0, 0] #create a translation matrix
-		R = E.euler2mat( 0, 0, theta ) #create a rotation matrix around Z axis.
-		Z = [1, 1, 1] # zooms...only included because API required it... will ignore the skew
-		rM = AFF.compose(T, R, Z)
-		Self.position = np.matmul(Self.position, rM )
+		rM = BW.get_pos_transform( x=0, y=0, z=0, theta=theta ) #create an incremental rotation
+		Self.set_rel_position (np.matmul(Self.rel_position, rM )) #update the new position
 
 	def turn_right( Self, theta  = DEFAULT_TURN_AMT ):
 		#'turning right is just a negative angle passed to turn left'
 		Self.turn_left( -theta )
 
 	def wander( Self ):
-		rand_x = rand.randint( 0, Bug.DEFAULT_MOVE_AMT )
-		T = [ rand_x, 0, 0]
-		rand_theta = rand.uniform( -Bug.DEFAULT_TURN_AMT, Bug.DEFAULT_TURN_AMT )
-		R = E.euler2mat( 0, 0, rand_theta )
-		Z = [1, 1, 1] # zooms...only included because API required it... will ignore the skew
-		rM = AFF.compose(T, R, Z) #random transformation including turn and forward
-		Self.position = np.matmul(Self.position, rM )
+		rand_x = random.randint( 0, Bug.DEFAULT_MOVE_AMT )
+		rand_theta = random.uniform( -Bug.DEFAULT_TURN_AMT, Bug.DEFAULT_TURN_AMT )
+		wM = BW.get_pos_transform( x=rand_x, y=0, z=0, theta=rand_theta ) #create an incremental movement
+		Self.set_rel_position(np.matmul(Self.rel_position, wM )) #update the new relative position
+
+class Herbivore( Bug ): 
+	def __init__ (Self, starting_pos, name = "Herb" ):
+		super().__init__( starting_pos, name )
+		Self.color = Color.GREEN
+
+class Omnivore( Bug ): #Orange
+	pass
+
+class Carnivore( Bug ): #Red
+	pass
 
 
-#----------------- START PYGAME SPECIFIC CODE ---------------------------------------
-
-import pygame
-
-#assume 2D graphics and using Pygame to render.
-class PGBug(Bug):
-
-	pg2bugxform = [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]] 
-	bug2pgxform = pg2bugxform
-
-	def __init__(Self, color , starting_x = 0, starting_y = 0, starting_theta = 0 ):
-		Self.color = color
-		Self.size = 10
-		Self.wrap = True
-		super(PGBug, Self).__init__( starting_x, starting_y, 0, starting_theta )
-	
-	# PyGame canvas starts x=0, y=0 at upper left rather than lower left
-	# which inverts the z-axis due to right hand rule.
-	# So, need a transformation from virtual coord system of the bug to display coord system
-	def pg2bug_coord( PG_coords ):
-		return (np.matmul(PGBug.pg2bugxform, PG_coords))
-
-	def bug2pg_coord( Bug_coords ):
-		return (np.matmul(PGBug.bug2pgxform, Bug_coords))
-
-	def draw(Self, surface):
-		
-		width, height = surface.get_size()
-
-		if Self.wrap:
-			if Self.position[0][3] < 0:  Self.position[0][3] = width 
-			elif Self.position[0][3] > width: Self.position[0][3] = 0
-
-			if Self.position[1][3] < 0: Self.position[1][3] = height
-			elif Self.position[1][3] > height: Self.position[1][3] = 0
-		else:
-			if Self.position[0][3] < 0:  Self.position[0][3] = 0 
-			elif Self.position[0][3] > width: Self.position[0][3] = width
-
-			if Self.position[1][3] < 0: Self.position[1][3] = 0
-			elif Self.position[1][3] > height: Self.position[1][3] = height
-
-		PG_coords = PGBug.bug2pg_coord( Self.position )
-		#print(PG_coords)
-		x = int(PG_coords[0][3])
-		y = int(PG_coords[1][3])
-		pygame.draw.circle(surface, Self.color, (x,y), Self.size, 0) 
-	

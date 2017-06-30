@@ -8,14 +8,14 @@
 
 #----------------- START PYGAME SPECIFIC CODE ---------------------------------------
 
-#import pygame <-- done in main.py
+import pygame
 
 #assume 2D graphics and using Pygame to render.
 class PGObject():
 
 	def draw( Self, surface ):
-		x = Self.get_abs_x()
-		y = Self.get_abs_y()
+		x = int(Self.get_abs_x())
+		y = int(Self.get_abs_y())
 		pygame.draw.circle(surface, Self.color, (x, y), Self.size, 0) 
 	
 	def get_abs_x():
@@ -137,11 +137,19 @@ class BugWorld(): #defines the world, holds the objects, defines the rules of in
 
 #--- Instance Methods	
 	def __init__(Self):
- 		Self.rel_position = BugWorld.IDENTITY #sets the world as the root equates to x=0, y=0, z=0, rotation = 0
- 		for i in range(0, BugWorld.NUM_HERBIVORE_BUGS ):
- 			start_pos = BugWorld.get_random_location_in_world()				
- 			Self.WorldObjects.append( Herbivore( start_pos, "H"+ str(i) ))
-	
+		Self.rel_position = BugWorld.IDENTITY #sets the world as the root equates to x=0, y=0, z=0, rotation = 0
+		for i in range(0, BugWorld.NUM_HERBIVORE_BUGS):
+			start_pos = BugWorld.get_random_location_in_world()
+			Self.WorldObjects.append( Herbivore( start_pos, "H"+ str(i) ))
+
+		for i in range(0, BugWorld.NUM_CARNIVORE_BUGS):
+			start_pos = BugWorld.get_random_location_in_world()
+			Self.WorldObjects.append( Carnivore( start_pos, "C"+ str(i) ))
+
+		for i in range(0, BugWorld.NUM_OMNIVORE_BUGS ):
+ 			start_pos = BugWorld.get_random_location_in_world()
+ 			Self.WorldObjects.append( Omnivore( start_pos, "O"+ str(i) ))
+
 	def update(Self):
 		for BWO in Self.WorldObjects:
 			BWO.update(Self.rel_position)
@@ -183,7 +191,7 @@ class BugWorld(): #defines the world, holds the objects, defines the rules of in
 			elif wT[0][3] > BugWorld.BOUNDARY_WIDTH: wT[0][3] = BugWorld.BOUNDARY_WIDTH
 
 			if wT[1][3] < 0: wT[1][3] = 0
-			elif wT[1][3] > BugWorld.BOUNDARY_HEIGHT: wT[1][3] = BugWorld.BOUNDAY_HEIGHT
+			elif wT[1][3] > BugWorld.BOUNDARY_HEIGHT: wT[1][3] = BugWorld.BOUNDARY_HEIGHT
 
 		return wT #return the updated transform
 
@@ -200,7 +208,7 @@ class BugWorld(): #defines the world, holds the objects, defines the rules of in
 		return position[0][3] 
 
 	def get_y( position ):
-		return position[0][3] 
+		return position[1][3] 
 
 	def get_random_location_in_world():
 		x = random.randint(0, BugWorld.BOUNDARY_WIDTH )
@@ -222,8 +230,8 @@ class BWObject( PGObject ): #Bug World Object
 	#stub methods for what collisions to register for
 
 	def __init__(Self, starting_pos = BugWorld.IDENTITY, name = "BWOBject"):
-  		Self.set_rel_position( starting_pos )
-  		Self.set_abs_position( )
+  		Self.rel_position = starting_pos
+  		Self.abs_position = starting_pos
   		Self.name = name
   		Self.size = 1 #default...needs to be overridden
   		Self.color = Color.BLACK #default...needs to be overridden
@@ -273,5 +281,134 @@ class Circle(object):
 		if (distance < c1.radius + c2.radius): return True
 		else: return False
 
+#Things to do
+#import logging
+#fix z axis flip from pygame to local coord system
+#have a scale for drawing in pygame that is independent of bug kinematics
 
-from Bug import *
+
+#have a sample period so can do velocity
+#simulate collision dynamics to mimic accelerometer
+#kinematics for zumo
+#kinematics for gopigo
+
+#range
+#collisions could do damage
+#minimize energy spent
+#maximize health
+
+
+#Bug
+#knows how to move
+#holds attributes
+#has a brain
+#has sensors
+#has outputs
+
+#Bug parts
+#has a shape, size, color, location(relative to base), hitbox(relative to location)
+#knows how to draw itself
+#knows what type of collisions to register for
+
+#Collision 
+#type
+#callback method
+
+
+class Obstacle( BWObject ): #yellow
+	pass
+
+class Meat( BWObject ): #brown
+	pass
+
+class Plant( BWObject ): #dark green
+	pass
+#---------
+
+
+class BugEye( BWObject ):
+	def __init__( Self, pos_transform = BugWorld.IDENTITY, size = 1 ):
+		Self.name = "E"
+		super().__init__( pos_transform, Self.name )
+		Self.size = size
+		Self.color = Color.GREY 
+
+	def update( Self, base ):
+		#eyes don't move independent of bug, so relative pos won't change.
+		Self.set_abs_position( base ) #update it based on the passed in ref frame
+
+class Bug ( BWObject ):
+
+	DEFAULT_TURN_AMT = np.deg2rad(30) # turns are in radians
+	DEFAULT_MOVE_AMT = 5
+
+	def __init__( Self, initial_pos, name = "Bug" ):
+		super().__init__( initial_pos, name )
+		Self.size = 10 #override default and set the intial radius of bug
+		Self.color = Color.PINK #override default and set the initial color of a default bug
+
+		#add the eyes for a default bug
+		#put eye center on circumference, rotate then translate.
+		rT = BugWorld.get_pos_transform( 0, 0, 0, np.deg2rad(-30) )
+		tT = BugWorld.get_pos_transform( Self.size, 0, 0, 0 )
+		Self.RIGHT_EYE_LOC = np.matmul(rT,tT)
+
+		rT = BugWorld.get_pos_transform( 0, 0, 0, np.deg2rad(30) )
+		Self.LEFT_EYE_LOC = np.matmul(rT,tT)
+
+		Self.EYE_SIZE = int(Self.size * 0.50) #set a percentage the size of the bug
+		#instantiate the eyes
+		Self.RightEye = BugEye( Self.RIGHT_EYE_LOC, Self.EYE_SIZE )
+#		Self.RightEye.color = Color.RED
+
+		Self.LeftEye = BugEye( Self.LEFT_EYE_LOC, Self.EYE_SIZE )
+
+
+	def update( Self, base ):
+		Self.wander() #changes the relative position
+#		Self.move_forward( 1 )
+		Self.set_abs_position( base )
+		Self.RightEye.update( Self.abs_position )
+		Self.LeftEye.update( Self.abs_position )
+
+	def draw( Self, surface ):
+		super().draw(surface) #inherited from BWObject
+		Self.RightEye.draw(surface)
+		Self.LeftEye.draw(surface)
+
+	def move_forward( Self, amount_to_move = DEFAULT_MOVE_AMT ):
+		#assume bug's 'forward' is along the x direction in local coord frame
+		tM = BugWorld.get_pos_transform( x=amount_to_move, y=0, z=0, theta=0 ) #create an incremental translation
+		Self.set_rel_position ( np.matmul(Self.rel_position, tM)) #update the new position
+
+	def turn_left( Self, theta = DEFAULT_TURN_AMT ):
+		rM = BugWorld.get_pos_transform( x=0, y=0, z=0, theta=theta ) #create an incremental rotation
+		Self.set_rel_position (np.matmul(Self.rel_position, rM )) #update the new position
+
+	def turn_right( Self, theta  = DEFAULT_TURN_AMT ):
+		#'turning right is just a negative angle passed to turn left'
+		Self.turn_left( -theta )
+
+	def wander( Self ):
+		rand_x = random.randint( 0, Bug.DEFAULT_MOVE_AMT )
+		rand_theta = random.uniform( -Bug.DEFAULT_TURN_AMT, Bug.DEFAULT_TURN_AMT )
+		wM = BugWorld.get_pos_transform( x=rand_x, y=0, z=0, theta=rand_theta ) #create an incremental movement
+		Self.set_rel_position(np.matmul(Self.rel_position, wM )) #update the new relative position
+
+class Herbivore( Bug ): 
+	def __init__ (Self, starting_pos, name = "Herb" ):
+		super().__init__( starting_pos, name )
+		Self.color = Color.GREEN
+
+class Omnivore( Bug ): #Orange
+	def __init__ (Self, starting_pos, name = "OMN" ):
+		super().__init__( starting_pos, name )
+		Self.color = Color.ORANGE
+
+class Carnivore( Bug ): #Red
+	def __init__ (Self, starting_pos, name = "CARN" ):
+		super().__init__( starting_pos, name )
+		Self.color = Color.RED
+
+
+
