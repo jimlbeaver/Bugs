@@ -2,8 +2,7 @@
 #PGBugWorld where pygame dependent code goes
 
 #contains draw code
-#BWO's should have a draw method that includes itself, hitboxes (based on global var)
-#should have a method to overwrite that knows how to draw itself
+
 #toggle display of light, smell, sound
 
 #----------------- START PYGAME SPECIFIC CODE ---------------------------------------
@@ -33,13 +32,14 @@ class PGObject():
 #	- kills objects
 #	- determines rules for affecting object attributes (health, mutating, mating)
 
-# need an easily updateable rules abstraction.  Table or something?  Dictionary?
+
 
 #objects register for different types of collisions (physical, sound, smell, light(RGB))
 #objects have hitboxes for each sensor.
 
 
 #objects emit light at 1/r^2 three different colors
+#how do you keep senses from sensing itself
 #objects emit sound (varies on speed)
 #objects emit smell
 #objects have physical collision
@@ -55,36 +55,42 @@ class PGObject():
 #	- should return "distance" so can be used for intensity
 #	- returns an intensity of collision (for eye interaction with light, sound, smell)
 
-	 ### MAIN TEST FOR Pointwise COLLISION ###
-	 #   if(mx in range(x-radius,x+radius) and my in range(y-radius,y+radius)):
-	 #      hit=True
-	 #   else:
-	 #       hit=False
-
-	 ### Main test for colliding circles ##
-	# The distance between the two centers (x1,y1) and (x2,y2) can be calculated and compared as:
-	#d = sqrt((y2-y1) * (y2-y1) + (x2-x1) * (x2-x1));
-	#if (d < r1 + r2) { ... bang ... }
-	# OR to avoid sqrt for efficiency
-	#dsqrd = (y2-y1) * (y2-y1) + (x2-x1) * (x2-x1);
-	#if (dsqrd < (r1+r2)*(r1+r2)) { ... bang ... }
-
-
-
 #updates objects
-
-#eyes collide with light
+#eyes collide with objects and extracts RGB values from the target object .color tuple
+#eye collision also gives distance
 #bodies collide with other solid bodies
-#objects can emit light
-#objects can collide with light
 #contains rules of interactions
 #how do bugs die
 #have a score that indicates successfulness (distance travelled, area covered, energy amount (expended moving, gained eating) )
 #how do bugs reproduce (should we use the "weakest 500" to avoid extinction events)
 
+#need global counters so can do rates to keep populations stable.
+#timer
+	#controls rates like food introduction, mating
+	#creates extinction events
+
+#Iterations/generations:
+	#can be used to create extinction events in so many cycles
+
+#Need a point system to keep track of goal reinforcement
+	#points for distance travelled
+	#points for time alive
+	#points for food eaten
+
+#Need an energy system
+	#controls whether starves
+	#consume energy based on speed
+	#speed driven by amount of energy
+
 
 import numpy as np
 import random
+
+
+#Going to use 3D matrices even if in 2d
+#See http://matthew-brett.github.io/transforms3d/ for details on the lib used
+#Object's local coord frame is in the x,y plane and faces in the x direction.  
+#Positive rotation follow RHR, x-axis into the y-axis...so z is up.
 import transforms3d.affines as AFF 
 import transforms3d.euler as E
 
@@ -104,10 +110,61 @@ class Color(): #RGB values
 	GREY = (190,190,190)
 
 
-#Going to use 3D matrices even if in 2d
-#See http://matthew-brett.github.io/transforms3d/ for details on the lib used
-#Object's local coord frame is in the x,y plane and faces in the x direction.  
-#Positive rotation follow RHR, x-axis into the y-axis...so z is up.
+
+class BWOType ( ):
+
+	#use integers so it is faster for dict lookups
+	HERB = 1 #Herbivore
+	OMN = 2  #Omnivore
+	CARN = 3 #Carnivore 
+
+	OBST = 5
+	MEAT = 6
+	PLANT = 7
+	OBJ = 7
+
+	#uses these as counters and for the initial amounts
+	#do we need a max amount so we can re-instantiate after an extinction event
+
+	NUM_HERBIVORE_BUGS = 10
+	NUM_OMNIVORE_BUGS = 2
+	NUM_CARNIVORE_BUGS = 3
+
+	NUM_PLANT_FOOD = 20
+	NUM_MEAT_FOOD = 1
+	NUM_OBSTACLES = 15
+
+class BWCollision_Dict ():
+	pass
+# need an easily updateable rules abstraction.  Table or something?  Dictionary: two types as the keys, function as the item
+# def herb_omn( herb, omn ):
+#     pass
+
+# def herb_carn( herb_carn):
+#     pass
+
+# myDict={
+#     (HERB, OMN): herb_omn,
+#     (HERB, CARN ): herb_carn
+#     ...
+#     "Pn": pn
+# }
+
+# def myMain(OB1, OB2):
+#	  if (OB1.type > OB2.type ): handle_dict(OB2, OB1)
+#     else: handle_dict(OB1, OB2)
+#
+# def handle_dict( OB1, OB2 ):
+	
+# 	try:
+#   	myDict[(OB1.type,OB2.type)]( OB1, OB2 )
+
+#	except KeyError:
+#   	print("No handler for: " + OB1.type + ", ", OB2.type)
+#	
+
+
+
 
 class BugWorld(): #defines the world, holds the objects, defines the rules of interaction
 
@@ -154,16 +211,32 @@ class BugWorld(): #defines the world, holds the objects, defines the rules of in
 		for BWO in Self.WorldObjects:
 			BWO.update(Self.rel_position)
 
+		Self.detect_collisions()
+
 	def draw( Self, surface ):
 		for BWO in Self.WorldObjects:
 			BWO.draw( surface )
 	
-	def detect_collisions():
+	def detect_collisions(Self):
+		for BWO1 in Self.WorldObjects:
+			for BWO2 in Self.WorldObjects:
+				if BWO1 == BWO2: continue
+				elif Self.circle_collision(BWO1, BWO2):
+					print("Hit " + BWO1.name + " and " + BWO2.name )
+
 		#detect light collisions
 		#detect physical collisons
 		#detect odor collisions
 		#detect sound collisions
-		pass
+	
+	def circle_collision( Self, BWO1, BWO2 ):	#takes two BugWorld Objects in.
+		dx = BWO1.abs_position[0][3] - BWO2.abs_position[0][3]
+		dy = BWO1.abs_position[1][3] - BWO2.abs_position[1][3]
+
+		dist_sqrd = dx * dx + dy * dy
+
+		if (dist_sqrd < (BWO1.size + BWO2.size)^2) : return True
+		else: return False
 
 	def detect_light_collisions():
 		#loop through light emitting objects and see if they collide with light detecting
@@ -218,6 +291,8 @@ class BugWorld(): #defines the world, holds the objects, defines the rules of in
 		return BugWorld.get_pos_transform( x, y, z, theta )
 	
 
+
+
 class BWObject( PGObject ): #Bug World Object
 
 	#Everything is a BWObject including bug body parts (e.g., eyes, ears, noses).
@@ -226,7 +301,7 @@ class BWObject( PGObject ): #Bug World Object
 	#has a size
 	#has a name
 	#stores an absolute position to prevent recalculating it when passing to contained objects.
-
+	#BWO's should have a draw method that includes itself, hitboxes (based on global var)
 	#stub methods for what collisions to register for
 
 	def __init__(Self, starting_pos = BugWorld.IDENTITY, name = "BWOBject"):
@@ -263,23 +338,7 @@ class BWObject( PGObject ): #Bug World Object
 		pass
 
 	
-class Circle(object):
-	def __init__(self, x0, y0, R):
-		self.x, self.y, self.R = x0, y0, R
 
-	def area(self):
-		return pi*self.R**2
-
-	def circumference(self):
-		return 2*pi*self.R
-
-	def circle_collision( c1, c2 ):	#takes two Circle class objects in.
-		dx = c1.x - c2.x;
-		dy = c1.y - c2.y;
-		distance = np.sqrt(dx * dx + dy * dy);
-
-		if (distance < c1.radius + c2.radius): return True
-		else: return False
 
 #Things to do
 #import logging
@@ -365,8 +424,9 @@ class Bug ( BWObject ):
 
 
 	def update( Self, base ):
-		Self.wander() #changes the relative position
+#		Self.wander() #changes the relative position
 #		Self.move_forward( 1 )
+		Self.kinematic_wander()
 		Self.set_abs_position( base )
 		Self.RightEye.update( Self.abs_position )
 		Self.LeftEye.update( Self.abs_position )
@@ -394,6 +454,28 @@ class Bug ( BWObject ):
 		rand_theta = random.uniform( -Bug.DEFAULT_TURN_AMT, Bug.DEFAULT_TURN_AMT )
 		wM = BugWorld.get_pos_transform( x=rand_x, y=0, z=0, theta=rand_theta ) #create an incremental movement
 		Self.set_rel_position(np.matmul(Self.rel_position, wM )) #update the new relative position
+
+	def kinematic_wander(Self):
+
+		rand_vr = random.uniform( -.5, 1 ) #random right wheel velocity normalized
+		rand_vl = random.uniform( -.5, 1 ) #biased to move forward though
+										   #eventually will be driven by a neuron
+
+		delta_x, delta_y, delta_theta = Self.kinematic_move( rand_vr, rand_vl )
+		wM = BugWorld.get_pos_transform( x=delta_x, y=delta_y, z=0, theta=delta_theta ) #create an incremental movement
+		Self.set_rel_position(np.matmul(Self.rel_position, wM )) #update the new relative position		
+		
+
+	def kinematic_move( Self, vel_r, vel_l ): #assume bugbot with two wheels on each side of it.
+										      #taken from GRIT robotics course
+		wheel_radius = Self.size * 0.5 #wheel radius is some proportion of the radius of the body
+		wheel_separation = Self.size * 2 #wheels are separated by the size of the bug
+		delta_theta = ( wheel_radius/wheel_separation)*(vel_r - vel_l )
+		temp_vect = (wheel_radius/2)*(vel_r + vel_l)
+		delta_x = temp_vect * np.cos( delta_theta )
+		delta_y = temp_vect * np.sin( delta_theta )
+		return delta_x, delta_y, delta_theta
+
 
 class Herbivore( Bug ): 
 	def __init__ (Self, starting_pos, name = "Herb" ):
