@@ -82,10 +82,8 @@ class PGObject():
 	#consume energy based on speed
 	#speed driven by amount of energy
 
-
 import numpy as np
 import random
-
 
 #Going to use 3D matrices even if in 2d
 #See http://matthew-brett.github.io/transforms3d/ for details on the lib used
@@ -110,60 +108,67 @@ class Color(): #RGB values
 	GREY = (190,190,190)
 
 
-
-class BWOType ( ):
+class BWOType():
 
 	#use integers so it is faster for dict lookups
-	HERB = 1 #Herbivore
-	OMN = 2  #Omnivore
-	CARN = 3 #Carnivore 
+	HERB = int(1) # Herbivore
+	OMN = int(2)  # Omnivore
+	CARN = int(3) # Carnivore 
+	OBST = int(4) # Obstacle
+	MEAT = int(5) # Food for Carnivore and Omnivore
+	PLANT = int(6)# Food for Herbivore and Omnivore
+	OBJ = int(7)  #catch all for the base class.  Shouldn't ever show up
 
-	OBST = 5
-	MEAT = 6
-	PLANT = 7
-	OBJ = 7
-
-	#uses these as counters and for the initial amounts
-	#do we need a max amount so we can re-instantiate after an extinction event
-
-	NUM_HERBIVORE_BUGS = 10
-	NUM_OMNIVORE_BUGS = 2
-	NUM_CARNIVORE_BUGS = 3
-
-	NUM_PLANT_FOOD = 20
-	NUM_MEAT_FOOD = 1
-	NUM_OBSTACLES = 15
-
-class BWCollision_Dict ():
-	pass
-# need an easily updateable rules abstraction.  Table or something?  Dictionary: two types as the keys, function as the item
-# def herb_omn( herb, omn ):
-#     pass
-
-# def herb_carn( herb_carn):
-#     pass
-
-# myDict={
-#     (HERB, OMN): herb_omn,
-#     (HERB, CARN ): herb_carn
-#     ...
-#     "Pn": pn
-# }
-
-# def myMain(OB1, OB2):
-#	  if (OB1.type > OB2.type ): handle_dict(OB2, OB1)
-#     else: handle_dict(OB1, OB2)
-#
-# def handle_dict( OB1, OB2 ):
 	
-# 	try:
-#   	myDict[(OB1.type,OB2.type)]( OB1, OB2 )
+class BWCollision_Dict():	#Dictionary: two types as the keys, function as the item 
+							#passes pointers into each object
 
-#	except KeyError:
-#   	print("No handler for: " + OB1.type + ", ", OB2.type)
-#	
+	def print_collision( OB1, OB2 ):
+		print(OB1.name + ' of type: ' + str(OB1.type) + ', ' + OB2.name + ' of type: ' + str(OB2.type) )
+
+	def herb_omn( herb, omn ): #handle herbivore an omnivore collision
+		#do damage to herbivore
+		BWCollision_Dict.print_collision( herb, omn )
+
+	def herb_carn( herb, carn):
+		#do damage to herbivore
+		BWCollision_Dict.print_collision( herb, carn )
+
+	def herb_herb( herb1, herb2 ):
+		#certain probability of mating?
+		BWCollision_Dict.print_collision( herb1, herb2 )
+
+	def omn_omn( omn1, omn2 ): 
+		#do damage to herbivore
+		BWCollision_Dict.print_collision( omn1, omn2 )
+
+	def omn_carn( omn, carn):
+		#do damage to omn
+		BWCollision_Dict.print_collision( omn, carn )
+
+	def carn_carn( carn1, carn2 ):
+		#certain probability of mating?
+		BWCollision_Dict.print_collision( carn1, carn2 )
 
 
+	CollisionDict={ # look up which function to call when two objects of certain types collide
+		(BWOType.HERB, BWOType.OMN): herb_omn,
+		(BWOType.HERB, BWOType.CARN ): herb_carn,
+		(BWOType.HERB, BWOType.HERB): herb_herb,
+		(BWOType.OMN, BWOType.OMN ): omn_omn,
+		(BWOType.OMN, BWOType.CARN): omn_carn,
+		(BWOType.CARN, BWOType.CARN ): carn_carn
+	}
+
+	def handle_collision( Self, OB1, OB2):
+		if (OB1.type > OB2.type ): Self.handle_dict(OB2, OB1) #order the keys for dict lookup
+		else: Self.handle_dict(OB1, OB2)
+
+	def handle_dict( Self, OB1, OB2 ):
+		try:
+			Self.CollisionDict[(OB1.type,OB2.type)]( OB1, OB2 ) #use types to lookup function to call and then call it
+		except KeyError:
+			print("No handler for: " + OB1.type + ", ", OB2.type)
 
 
 class BugWorld(): #defines the world, holds the objects, defines the rules of interaction
@@ -182,6 +187,7 @@ class BugWorld(): #defines the world, holds the objects, defines the rules of in
 	IDENTITY = [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]] #equates to x=0, y=0, z=0, rotation = 0
 
 	WorldObjects = []
+	BWD = BWCollision_Dict() #instantiate a dictionary to handle collisions
 
 #used for collisions
 	#SolidObjects = [] #bugbodies, food, obstacles add themselves to this list
@@ -222,7 +228,8 @@ class BugWorld(): #defines the world, holds the objects, defines the rules of in
 			for BWO2 in Self.WorldObjects:
 				if BWO1 == BWO2: continue
 				elif Self.circle_collision(BWO1, BWO2):
-					print("Hit " + BWO1.name + " and " + BWO2.name )
+					# print("Hit " + BWO1.name + " and " + BWO2.name )
+					Self.BWD.handle_collision(BWO1, BWO2)
 
 		#detect light collisions
 		#detect physical collisons
@@ -291,8 +298,6 @@ class BugWorld(): #defines the world, holds the objects, defines the rules of in
 		return BugWorld.get_pos_transform( x, y, z, theta )
 	
 
-
-
 class BWObject( PGObject ): #Bug World Object
 
 	#Everything is a BWObject including bug body parts (e.g., eyes, ears, noses).
@@ -310,6 +315,7 @@ class BWObject( PGObject ): #Bug World Object
   		Self.name = name
   		Self.size = 1 #default...needs to be overridden
   		Self.color = Color.BLACK #default...needs to be overridden
+  		Self.type = BWOType.OBJ
 
 	def __repr__(Self):
   		return ( Self.name + ": abs position={}".format(Self.abs_position) ) #print its name and transform
@@ -481,16 +487,19 @@ class Herbivore( Bug ):
 	def __init__ (Self, starting_pos, name = "Herb" ):
 		super().__init__( starting_pos, name )
 		Self.color = Color.GREEN
+		Self.type = BWOType.HERB
 
 class Omnivore( Bug ): #Orange
 	def __init__ (Self, starting_pos, name = "OMN" ):
 		super().__init__( starting_pos, name )
 		Self.color = Color.ORANGE
+		Self.type = BWOType.OMN
 
 class Carnivore( Bug ): #Red
 	def __init__ (Self, starting_pos, name = "CARN" ):
 		super().__init__( starting_pos, name )
 		Self.color = Color.RED
+		Self.type = BWOType.CARN
 
 
 
