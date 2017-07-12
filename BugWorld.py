@@ -1,8 +1,6 @@
 
 #PGBugWorld where pygame dependent code goes
-
 #contains draw code
-
 #toggle display of light, smell, sound
 
 #----------------- START PYGAME SPECIFIC CODE ---------------------------------------
@@ -15,7 +13,16 @@ class PGObject():
 	def draw( Self, surface ):
 		x = int(Self.get_abs_x())
 		y = int(Self.get_abs_y())
-		pygame.draw.circle(surface, Self.color, (x, y), Self.size, 0) 
+
+
+		r,g,b = Self.color
+#modulate color based on health
+		# hp = Self.health/100 #what is the healt percentage
+		# r *= hp
+		# g *= hp
+		# b *= hp
+
+		pygame.draw.circle(surface, (int(r),int(g),int(b)), (x, y), Self.size, 0) 
 	
 	def get_abs_x():
 		pass
@@ -31,7 +38,6 @@ class PGObject():
 #	- determines where and when
 #	- kills objects
 #	- determines rules for affecting object attributes (health, mutating, mating)
-
 
 
 #objects register for different types of collisions (physical, sound, smell, light(RGB))
@@ -73,9 +79,10 @@ class PGObject():
 	#can be used to create extinction events in so many cycles
 
 #Need a point system to keep track of goal reinforcement
-	#points for distance travelled
+	#points for distance travelled (would incent to move.  otherwise would just sit still to max energy/health)
 	#points for time alive
 	#points for food eaten
+	#could use energy and health
 
 #Need an energy system
 	#controls whether starves
@@ -124,32 +131,78 @@ class BWCollision_Dict():	#Dictionary: two types as the keys, function as the it
 							#passes pointers into each object
 
 	def print_collision( OB1, OB2 ):
-		print(OB1.name + ' of type: ' + str(OB1.type) + ', ' + OB2.name + ' of type: ' + str(OB2.type) )
+		# print(OB1.name + 'T: ' + str(OB1.type) + ' H: ' + str(OB1.health) + ', ' 
+			# + OB2.name + 'T: ' + str(OB2.type) + ' H: ' + str(OB2.health))
+		pass
 
+#Bug to Bug interactions
 	def herb_omn( herb, omn ): #handle herbivore an omnivore collision
-		#do damage to herbivore
 		BWCollision_Dict.print_collision( herb, omn )
+		#do damage to herbivore
+		herb.health -= 1
 
 	def herb_carn( herb, carn):
-		#do damage to herbivore
 		BWCollision_Dict.print_collision( herb, carn )
+		#do damage to herbivore
+		herb.health -= 20
 
 	def herb_herb( herb1, herb2 ):
-		#certain probability of mating?
 		BWCollision_Dict.print_collision( herb1, herb2 )
+		#certain probability of mating?
 
 	def omn_omn( omn1, omn2 ): 
-		#do damage to herbivore
 		BWCollision_Dict.print_collision( omn1, omn2 )
+		#certain probability of mating?
 
-	def omn_carn( omn, carn):
-		#do damage to omn
+	def omn_carn( omn, carn ):
 		BWCollision_Dict.print_collision( omn, carn )
+		#do damage to omn
+		omn.health -= 20
+		carn.health -= 5
 
 	def carn_carn( carn1, carn2 ):
-		#certain probability of mating?
 		BWCollision_Dict.print_collision( carn1, carn2 )
+		#certain probability of mating or fighting?
+		carn1.health -= 5
+		carn2.health -= 5
 
+#Bug to food interactions
+	def herb_plant( herb, plant ):
+		BWCollision_Dict.print_collision( herb, plant )		
+		herb.energy += 10
+		plant.health -= 10
+		if ( plant.size > 1 ): plant.size -= 1
+
+	def omn_plant( omn, plant ):
+		BWCollision_Dict.print_collision( omn, plant )		
+		omn.energy += 10
+		plant.health -= 10
+		if ( plant.size > 1 ): plant.size -= 1
+
+	def omn_meat( omn, meat ):
+		BWCollision_Dict.print_collision( omn, meat )		
+		omn.energy += 10
+		meat.health -= 10
+		if ( meat.size > 1 ): meat.size -= 1
+
+	def carn_meat( carn, meat ):
+		BWCollision_Dict.print_collision( carn, meat )		
+		carn.energy += 10
+		meat.health -= 10
+		if ( meat.size > 1 ): meat.size -= 1
+
+#Bug obstacle interactions
+	def herb_obst( herb, obst ):
+		BWCollision_Dict.print_collision( herb, obst )		
+		herb.health -= 1 #ouch obstacles hurt
+
+	def omn_obst( omn, obst ):
+		BWCollision_Dict.print_collision( omn, obst )		
+		omn.health -= 1 #ouch obstacles hurt
+
+	def carn_obst( carn, obst ):
+		BWCollision_Dict.print_collision( carn, obst )		
+		carn.health -= 1 #ouch obstacles hurt
 
 	CollisionDict={ # look up which function to call when two objects of certain types collide
 		(BWOType.HERB, BWOType.OMN): herb_omn,
@@ -157,8 +210,16 @@ class BWCollision_Dict():	#Dictionary: two types as the keys, function as the it
 		(BWOType.HERB, BWOType.HERB): herb_herb,
 		(BWOType.OMN, BWOType.OMN ): omn_omn,
 		(BWOType.OMN, BWOType.CARN): omn_carn,
-		(BWOType.CARN, BWOType.CARN ): carn_carn
-	}
+		(BWOType.CARN, BWOType.CARN ): carn_carn,
+		(BWOType.HERB, BWOType.PLANT ): herb_plant,
+		(BWOType.OMN, BWOType.PLANT ): omn_plant,
+		(BWOType.OMN, BWOType.MEAT ): omn_meat,
+		(BWOType.CARN, BWOType.MEAT ): carn_meat,
+		(BWOType.HERB, BWOType.OBST ): herb_obst,
+		(BWOType.OMN, BWOType.OBST ): omn_obst,
+		(BWOType.CARN, BWOType.OBST ): carn_obst
+
+		}
 
 	def handle_collision( Self, OB1, OB2):
 		if (OB1.type > OB2.type ): Self.handle_dict(OB2, OB1) #order the keys for dict lookup
@@ -168,7 +229,13 @@ class BWCollision_Dict():	#Dictionary: two types as the keys, function as the it
 		try:
 			Self.CollisionDict[(OB1.type,OB2.type)]( OB1, OB2 ) #use types to lookup function to call and then call it
 		except KeyError:
-			print("No handler for: " + OB1.type + ", ", OB2.type)
+			pass #ignore it if isn't in dictionary
+
+			# for debugging
+			# if not (OB1.type == BWOType.OBST or OB2.type == BWOType.OBST ): #ignore if something dies on an obstacle
+			# 	print('No handler for: ' + OB1.name + ' T:' + str(OB1.type)	+ ", " +
+			# 							OB2.name + ' T:' + str(OB2.type))
+
 
 
 class BugWorld(): #defines the world, holds the objects, defines the rules of interaction
@@ -183,7 +250,7 @@ class BugWorld(): #defines the world, holds the objects, defines the rules of in
 	NUM_HERBIVORE_BUGS = 10
 	NUM_PLANT_FOOD = 20
 	NUM_MEAT_FOOD = 1
-	NUM_OBSTACLES = 15
+	NUM_OBSTACLES = 5
 	IDENTITY = [[1,0,0,0], [0,1,0,0], [0,0,1,0], [0,0,0,1]] #equates to x=0, y=0, z=0, rotation = 0
 
 	WorldObjects = []
@@ -201,7 +268,7 @@ class BugWorld(): #defines the world, holds the objects, defines the rules of in
 #--- Instance Methods	
 	def __init__(Self):
 		Self.rel_position = BugWorld.IDENTITY #sets the world as the root equates to x=0, y=0, z=0, rotation = 0
-		for i in range(0, BugWorld.NUM_HERBIVORE_BUGS):
+		for i in range(0, BugWorld.NUM_HERBIVORE_BUGS): #instantiate all of the Herbivores with a default name
 			start_pos = BugWorld.get_random_location_in_world()
 			Self.WorldObjects.append( Herbivore( start_pos, "H"+ str(i) ))
 
@@ -213,17 +280,75 @@ class BugWorld(): #defines the world, holds the objects, defines the rules of in
  			start_pos = BugWorld.get_random_location_in_world()
  			Self.WorldObjects.append( Omnivore( start_pos, "O"+ str(i) ))
 
+		for i in range(0, BugWorld.NUM_OBSTACLES ):
+ 			start_pos = BugWorld.get_random_location_in_world()
+ 			Self.WorldObjects.append( Obstacle( start_pos, "B"+ str(i) ))
+
+		for i in range(0, BugWorld.NUM_PLANT_FOOD ):
+ 			start_pos = BugWorld.get_random_location_in_world()
+ 			Self.WorldObjects.append( Plant( start_pos, "P"+ str(i) ))
+
+		for i in range(0, BugWorld.NUM_MEAT_FOOD ):
+ 			start_pos = BugWorld.get_random_location_in_world()
+ 			Self.WorldObjects.append( Meat( start_pos, "M"+ str(i) ))
+
 	def update(Self):
 		for BWO in Self.WorldObjects:
 			BWO.update(Self.rel_position)
 
 		Self.detect_collisions()
+		Self.post_collision_processing()
 
 	def draw( Self, surface ):
 		for BWO in Self.WorldObjects:
 			BWO.draw( surface )
 	
-	def detect_collisions(Self):
+	def detect_collisions( Self ):
+		Self.detect_light_collisions()
+		Self.detect_physical_collisions()
+
+		#detect odor collisions
+		#detect sound collisions
+
+	def post_collision_processing ( Self ):
+		#loop through objects and delete them, convert them etc.
+		#if health < 0, delete.
+		#if was a bug, convert it to meat
+		#if it was a plant, just delete it
+
+		#need to keep track of where in list when deleting so that when an item is deleted, the range is shortened.
+		list_len = len( Self.WorldObjects ) #starting lenght of the list of objects
+		i = 0 #index as to where we are in the list
+
+		#loop through every object in the list
+		while ( i < list_len ):
+			if ( Self.WorldObjects[i].health <= 0 ): #if the objects health is gone, deal with it.
+				co = Self.WorldObjects[i] #get the current object
+
+				#if it is a bug, then convert it to meat
+				if( co.type in { BWOType.HERB, BWOType.OMN, BWOType.CARN } ):
+			   		start_pos = co.get_abs_position() #get location of the dead bug
+			   		Self.WorldObjects.append( Meat( start_pos, "M"+ str(i) )) #create a meat object at same location
+			   		#list length hasn't changed because we are going to delete and add one
+				else:
+					list_len -= 1	#reduce the length of the list 
+
+				del Self.WorldObjects[i] #get rid of the object
+				#'i' should now point to the next one in the list because an item was removed so shouldn't have to increment
+			else:
+				i += 1 #manually increment index pointer because didn't delete the object
+
+
+	def detect_light_collisions( Self ):
+		#loop through light emitting objects and see if they collide with light detecting
+		#make sure doesn't collide with self
+		#need to differientiate between RGB detection/emission
+		#need to differentiate intensities so objects further away stimulate less
+		pass
+
+	def detect_physical_collisions( Self ):
+		#loop through solid bodies
+		#call collision handlers on each object
 		for BWO1 in Self.WorldObjects:
 			for BWO2 in Self.WorldObjects:
 				if BWO1 == BWO2: continue
@@ -231,31 +356,14 @@ class BugWorld(): #defines the world, holds the objects, defines the rules of in
 					# print("Hit " + BWO1.name + " and " + BWO2.name )
 					Self.BWD.handle_collision(BWO1, BWO2)
 
-		#detect light collisions
-		#detect physical collisons
-		#detect odor collisions
-		#detect sound collisions
-	
 	def circle_collision( Self, BWO1, BWO2 ):	#takes two BugWorld Objects in.
 		dx = BWO1.abs_position[0][3] - BWO2.abs_position[0][3]
 		dy = BWO1.abs_position[1][3] - BWO2.abs_position[1][3]
 
-		dist_sqrd = dx * dx + dy * dy
-
-		if (dist_sqrd < (BWO1.size + BWO2.size)^2) : return True
+		dist_sqrd = ( dx * dx ) + ( dy * dy )
+		#size is radius of objections circle hit box
+		if (dist_sqrd < (BWO1.size + BWO2.size)**2) : return True
 		else: return False
-
-	def detect_light_collisions():
-		#loop through light emitting objects and see if they collide with light detecting
-		#make sure doesn't collide with self
-		#need to differientiate between RGB detection/emission
-		#need to differentiate intensities so objects further away stimulate less
-		pass
-
-	def detect_physical_collisions():
-		#loop through solid bodies
-		#call collision handlers on each object
-		pass
 
 #----- Utility Class Methods ----------------
 
@@ -315,7 +423,9 @@ class BWObject( PGObject ): #Bug World Object
   		Self.name = name
   		Self.size = 1 #default...needs to be overridden
   		Self.color = Color.BLACK #default...needs to be overridden
-  		Self.type = BWOType.OBJ
+  		Self.type = BWOType.OBJ #default...needs to be overridden
+  		Self.health = 100 #default...needs to be overridden
+  		Self.energy = 100 #default...needs to be overridden
 
 	def __repr__(Self):
   		return ( Self.name + ": abs position={}".format(Self.abs_position) ) #print its name and transform
@@ -328,6 +438,9 @@ class BWObject( PGObject ): #Bug World Object
 		Self.abs_position = np.matmul( base_transform, Self.rel_position )
 		return Self.abs_position
 
+	def get_abs_position(Self):
+		return Self.abs_position
+
 	def get_abs_x( Self ):
 		return( BugWorld.get_x( Self.abs_position ) )
 
@@ -336,14 +449,6 @@ class BWObject( PGObject ): #Bug World Object
 
 	def update( Self, base ): #stub method. Override to move this object each sample period
 		pass	
-
-	def register_collision_detection():
-		pass
-
-	def collision_handler(): #stub method.  Override this to handle collsions 
-		pass
-
-	
 
 
 #Things to do
@@ -374,21 +479,6 @@ class BWObject( PGObject ): #Bug World Object
 #has a shape, size, color, location(relative to base), hitbox(relative to location)
 #knows how to draw itself
 #knows what type of collisions to register for
-
-#Collision 
-#type
-#callback method
-
-
-class Obstacle( BWObject ): #yellow
-	pass
-
-class Meat( BWObject ): #brown
-	pass
-
-class Plant( BWObject ): #dark green
-	pass
-#---------
 
 
 class BugEye( BWObject ):
@@ -500,6 +590,27 @@ class Carnivore( Bug ): #Red
 		super().__init__( starting_pos, name )
 		Self.color = Color.RED
 		Self.type = BWOType.CARN
+
+class Obstacle( BWObject ): #yellow
+	def __init__ (Self, starting_pos, name = "OBST" ):
+		super().__init__( starting_pos, name )
+		Self.color = Color.YELLOW
+		Self.type = BWOType.OBST
+		Self.size = 7
+
+class Meat( BWObject ): #brown
+	def __init__ (Self, starting_pos, name = "MEAT" ):
+		super().__init__( starting_pos, name )
+		Self.color = Color.BROWN
+		Self.type = BWOType.MEAT
+		Self.size = 10
+
+class Plant( BWObject ): #dark green
+	def __init__ (Self, starting_pos, name = "PLANT" ):
+		super().__init__( starting_pos, name )
+		Self.color = Color.DARK_GREEN
+		Self.type = BWOType.PLANT
+		Self.size = 5
 
 
 
