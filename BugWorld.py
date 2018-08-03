@@ -4,7 +4,6 @@
 #toggle display of light, smell, sound
 
 #----------------- START PYGAME SPECIFIC CODE ---------------------------------------
-
 import pygame
 
 #assume 2D graphics and using Pygame to render.
@@ -15,7 +14,7 @@ class PGObject():
 		y = int(Self.get_abs_y())
 
 
-		r,g,b = Self.color
+		r,g,b = Self.color #unpack the tuple
 #modulate color based on health
 		# hp = Self.health/100 #what is the healt percentage
 		# r *= hp
@@ -29,7 +28,6 @@ class PGObject():
 
 	def get_abs_y():
 		pass
-
 
 #world for simulations to happen 
 #has boundaries
@@ -51,7 +49,9 @@ class PGObject():
 #objects have physical collision
 #objects have smell collision
 #objects have sound collision
-
+#eyes collide with objects and extracts RGB values from the target object .color tuple
+#eye collision also gives distance
+#bodies collide with other solid bodies
 
 # has the sample time which is the update loop time...used for velocity and accleration
 
@@ -61,10 +61,7 @@ class PGObject():
 #	- should return "distance" so can be used for intensity
 #	- returns an intensity of collision (for eye interaction with light, sound, smell)
 
-#updates objects
-#eyes collide with objects and extracts RGB values from the target object .color tuple
-#eye collision also gives distance
-#bodies collide with other solid bodies
+
 #contains rules of interactions
 #how do bugs die
 #have a score that indicates successfulness (distance travelled, area covered, energy amount (expended moving, gained eating) )
@@ -75,7 +72,7 @@ class PGObject():
 	#controls rates like food introduction, mating
 	#creates extinction events
 
-#Iterations/generations:
+#Iterations/generations/epoch:
 	#can be used to create extinction events in so many cycles
 
 #Need a point system to keep track of goal reinforcement
@@ -245,8 +242,8 @@ class BugWorld(): #defines the world, holds the objects, defines the rules of in
 	BOUNDARY_HEIGHT = 600
 	BOUNDARY_WRAP = True
 
-	NUM_CARNIVORE_BUGS = 3
-	NUM_OMNIVORE_BUGS = 2
+	NUM_CARNIVORE_BUGS = 5
+	NUM_OMNIVORE_BUGS = 3
 	NUM_HERBIVORE_BUGS = 10
 	NUM_PLANT_FOOD = 20
 	NUM_MEAT_FOOD = 1
@@ -418,14 +415,14 @@ class BWObject( PGObject ): #Bug World Object
 	#stub methods for what collisions to register for
 
 	def __init__(Self, starting_pos = BugWorld.IDENTITY, name = "BWOBject"):
-  		Self.rel_position = starting_pos
-  		Self.abs_position = starting_pos
-  		Self.name = name
-  		Self.size = 1 #default...needs to be overridden
-  		Self.color = Color.BLACK #default...needs to be overridden
-  		Self.type = BWOType.OBJ #default...needs to be overridden
-  		Self.health = 100 #default...needs to be overridden
-  		Self.energy = 100 #default...needs to be overridden
+		Self.rel_position = starting_pos
+		Self.abs_position = starting_pos
+		Self.name = name
+		Self.size = 1 #default...needs to be overridden
+		Self.color = Color.BLACK #default...needs to be overridden
+		Self.type = BWOType.OBJ #default...needs to be overridden
+		Self.health = 100 #default...needs to be overridden
+
 
 	def __repr__(Self):
   		return ( Self.name + ": abs position={}".format(Self.abs_position) ) #print its name and transform
@@ -501,6 +498,8 @@ class Bug ( BWObject ):
 		super().__init__( initial_pos, name )
 		Self.size = 10 #override default and set the intial radius of bug
 		Self.color = Color.PINK #override default and set the initial color of a default bug
+		Self.energy = 100 #default...needs to be overridden
+		Self.score = 0 #used to reinforce behaviour.  Add to the score when does a "good" thing
 
 		#add the eyes for a default bug
 		#put eye center on circumference, rotate then translate.
