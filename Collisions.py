@@ -39,9 +39,9 @@ class CollisionObject():
 	HITBOX_CIRCLE = int(1)
 	HITBOX_RECT	= int(2)
 
-	def __init__( Self )
-		#must be overwritten so that if an object inherits this, it MUST know to add itself to a Collisions list.
-		pass
+	def __init__( Self ):
+		Self.set_hitbox_type( Self )
+		#must be added to in sublass so that if an object inherits this, it MUST know to add itself to a Collisions list.
 
 	def get_abs_x(Self):
 		#must override
@@ -62,149 +62,97 @@ class CollisionObject():
 	def set_hitbox_type( Self ):
 		Self.hitbox_type = HITBOX_CIRCLE
 
-
-
-
-
-class CollisionDict():
-
-	#need add
-	#method to call handler
-
-	def add_handler(CO1, CO2, fucntion_to_call)
-	#make an entry for both CO1, CO2 and CO2, CO1 unless they are the same
-
-#Could have different classes upon inheritance so it would know which Collision class to call
-
+	def is_this_me( Self, co ):
+		#check to see if the object to compare is itself or recursively its owner
+		pass
 
 class Collisions():
-	_co = CollisionObject[]
+	_emitters = []
+	_detectors = []
+	_enabled = False # can be used to ignore a certain type of collisions
 
-	_cd = CollisionDict()
+	def __init__( Self, handler_method ):
+		Self._cb = handler_method
 
-	def add_object(Self, CollisonObject co):
-		collision_objects.append = co
+	def enable_collsions( Self ):
+		Self._enabled = True
 
-	def remove_object(Self, CollisionObject co):
+	def disable_collisions( Self ):
+		Self._enabled = False
+
+	def add_emitter(Self, collision_object ):
+		Self._emitters.append( collision_object )
+
+	def add_detector(Self, collision_object ):
+		Self._detectors.append( collision_object )
+
+	def remove_object(Self, collision_object ):
 		#find object in list and remove it
+		#should be called in the destructor method so that it is removed from all lists
+		pass
 
 	def print_collision( OB1, OB2 ):
-		# print(OB1.name + 'T: ' + str(OB1.type) + ' H: ' + str(OB1.health) + ', ' 
-			# + OB2.name + 'T: ' + str(OB2.type) + ' H: ' + str(OB2.health))
-		pass		
-
-	def detect_collision( Self, hb1, hb2 )
-		if (hb1.hitbox_type != Collision.CollisionObject.hitbox_circle ):
-			pass
-		if (hb2.hitbox_type != Collision.CollisionObject.hitbox_circleCircleHitbox ):
-			pass
-		return Self.circle_collision( hb1, hb2 )
+		#print( OB1.name + ', ' + OB2.name  )
+		pass
 
 	def circle_collision( Self, CO1, CO2 ):	#takes two Circle Hitbox Objects in.
 		dx = CO1.get_abs_x() - CO2.get_abs_x()
-		dy - CO1.get_abs_y() - CO2.get_abs_y()
+		dy = CO1.get_abs_y() - CO2.get_abs_y()
 
 		dist_sqrd = ( dx * dx ) + ( dy * dy )
 		#size is radius of objections circle hit box
 		if (dist_sqrd < (CO1.get_size() + CO2.get_size())**2) : return True
 		else: return False
 
-
-#-------------------------------------------
-
-
-class CollisonObjectType():
-
-	#use integers so it is faster for dict lookups
-	HERB = int(1) # Herbivore
-	OMN = int(2)  # Omnivore
-	CARN = int(3) # Carnivore 
-	OBST = int(4) # Obstacle
-	MEAT = int(5) # Food for Carnivore and Omnivore
-	PLANT = int(6)# Food for Herbivore and Omnivore
-	OBJ = int(7)  #catch all for the base class.  Shouldn't ever show up
-
-	EYE = int(8)
-
-	
-class PhysicalCollisions():
-	#Dictionary: two types as the keys, function as the item 
-	#passes pointers into each object
-
-#Bug to Bug interactions
-	def herb_omn( herb, omn ): #handle herbivore an omnivore collision
-		BWCollisionDict.print_collision( herb, omn )
-		#do damage to herbivore
-		herb.health -= 1
-
-	def herb_carn( herb, carn):
-		BWCollisionDict.print_collision( herb, carn )
-		#do damage to herbivore
-		herb.health -= 20
-
-	def herb_herb( herb1, herb2 ):
-		BWCollisionDict.print_collision( herb1, herb2 )
-		#certain probability of mating?
-
-	CollisionDict={ # look up which function to call when two objects of certain types collide
-		(BWOType.HERB, BWOType.OMN): herb_omn,
-		(BWOType.HERB, BWOType.CARN ): herb_carn,
-		(BWOType.HERB, BWOType.HERB): herb_herb,
-		(BWOType.OMN, BWOType.OMN ): omn_omn,
-		(BWOType.OMN, BWOType.CARN): omn_carn,
-		(BWOType.CARN, BWOType.CARN ): carn_carn,
-		(BWOType.HERB, BWOType.PLANT ): herb_plant,
-		(BWOType.OMN, BWOType.PLANT ): omn_plant,
-		(BWOType.OMN, BWOType.MEAT ): omn_meat,
-		(BWOType.CARN, BWOType.MEAT ): carn_meat,
-		(BWOType.HERB, BWOType.OBST ): herb_obst,
-		(BWOType.OMN, BWOType.OBST ): omn_obst,
-		(BWOType.CARN, BWOType.OBST ): carn_obst
-
-		}
-
-	def handle_collision( Self, OB1, OB2):
-		if (OB1.type > OB2.type ): Self.handle_dict(OB2, OB1) #order the keys for dict lookup
-		else: Self.handle_dict(OB1, OB2)
-
-	def handle_dict( Self, OB1, OB2 ):
-		try:
-			Self.CollisionDict[(OB1.type,OB2.type)]( OB1, OB2 ) #use types to lookup function to call and then call it
-		except KeyError:
-			pass #ignore it if isn't in dictionary
-
-			# for debugging
-			# if not (OB1.type == BWOType.OBST or OB2.type == BWOType.OBST ): #ignore if something dies on an obstacle
-			# 	print('No handler for: ' + OB1.name + ' T:' + str(OB1.type)	+ ", " +
-			# 							OB2.name + ' T:' + str(OB2.type))
-
-
-
-
 	def detect_collisions( Self ):
 		#loop through solid bodies
 		#call collision handlers on each object
-		for CO1 in Self._co:
-			for CO2 in Self._co:
+		for CO1 in Self._emitters:
+			for CO2 in Self._detectors:
 				if CO1 == CO2: continue #need to call isThisMe()
-				elif Self.circle_collision(CO1, CO2):
+				elif Self.circle_collision(CO1, CO2): #replace with hitbox stuff
 					# print("Hit " + CO1.name + " and " + CO2.name )
-					Self.CollisionDict.handle_collision(CO1, CO2)
+
+					#call the callback handler
+					Self._cb(CO1,CO2)
+'''
+	def detect_collisions( Self, hb1, hb2 )
+		if (hb1.hitbox_type != Collision.CollisionObject.hitbox_circle ):
+			pass
+		if (hb2.hitbox_type != Collision.CollisionObject.hitbox_circleCircleHitbox ):
+			pass
+		return Self.circle_collision( hb1, hb2 )
+'''
 
 
+#--- Testing Code after this point -------------------------------------------------------------------------------------------------------------
 
 '''
 	For an object to participate in Collision Detection it must inherit from the Collisions.CollisionObject class
 	and must override the methods needed during collision detection
 '''
 
-class CollisionTestObject( Collisions.CollisionObject ):
+class CTOType():
+	#use integers so it is faster for dict lookups
+	OBJ = int(1)  #catch all for the base class.  Shouldn't ever show up
+	BUG = int(2)  #handles any bug interaction
+	HERB = int(3) # Herbivore
+	OMN = int(4)  # Omnivore
+	CARN = int(5) # Carnivore 
+	OBST = int(6) # Obstacle
+	MEAT = int(7) # Food for Carnivore and Omnivore
+	PLANT = int(8)# Food for Herbivore and Omnivore
+	EYE = int(9)  # An eye that used for visual detection	
 
-	def __init__( Self, CollisionTestWorld, x, y, size ):
+class CollisionTestObject( CollisionObject ):
+
+	def __init__( Self, CollisionTestWorld, name, x, y, size ):
+		Self.type = CTOType.OBJ #needs to be overwritten
+		Self.name = name
 		Self.x = x
 		Self.y = y
 		Self.size = size
-		Self.World = CollsionTestWorld #handle back to container so can call instance methods on it.
+		Self.World = CollisionTestWorld #handle back to container so can call instance methods on it.
 
 	def get_abs_x( Self ):
 		return Self.x
@@ -216,47 +164,158 @@ class CollisionTestObject( Collisions.CollisionObject ):
 		return Self.size	
 
 
+class CollisionTestBody( CollisionTestObject ):
 
-class CollisionTestBug( CollisionTestObject ):
+	def __init__( Self, CTW, name, x, y, size ):
+		super().__init__( CTW, name, x, y, size )
+		Self.type = CTOType.HERB 
+		CTW.register_collision_event( CTW.CTWEventType.VISUAL_EMITTER , Self)
+		CTW.register_collision_event( CTW.CTWEventType.PHYSICAL_DETECTOR, Self )
+		CTW.register_collision_event( CTW.CTWEventType.PHYSICAL_EMITTER, Self )
 
-	def __init__( Self, x, y, size ):
-		super().init( x, y, size )
-		#register for vision emmitter
-		#register for physical collision emitter
-		#register for physical collision detector
+	def __del__( Self ):
+		#want to make sure it gets removed from all of the collision events
+		#since the world creates in different lists, it should remove it from all of them
+		#let's revisit though...probably should print a debug message here when something gets deleted at least
+		#Self.World.remove_object( Self )
+		pass
+
 
 class CollisionTestEye( CollisionTestObject ):
-	def __init__( Self, x, y, size ):
-		super().init( x, y, size )
-		#register for vision detector
+	def __init__( Self, CTW, name, x, y, size ):
+		super().__init__( CTW, name, x, y, size )
+		Self.type = CTOType.EYE 
+		CTW.register_collision_event( CTW.CTWEventType.VISUAL_DETECTOR, Self )
 
+	def __del__( Self ):
+		#want to make sure it gets removed from all of the collision events
+		#since the world creates in different lists, it should remove it from all of them
+		#let's revisit though...probably should print a debug message here when something gets deleted at least
+		#Self.World.remove_object( Self )
+		pass
+
+class CTWCollisionDict():
+
+	def handle_collision( Self, OB1, OB2):
+		if (OB1.type > OB2.type ): Self.handle_dict(OB2, OB1) #order the keys for dict lookup
+		else: Self.handle_dict(OB1, OB2)
+
+	def handle_dict( Self, OB1, OB2 ):
+		try:
+			Self.CollisionDict[(OB1.type,OB2.type)]( OB1, OB2 ) #use types to lookup function to call and then call it
+		except KeyError:
+			print('No handler for: ' + OB1.name + ' T:' + str(OB1.type)	+ ", " + OB2.name + ' T:' + str(OB2.type))
+
+	def print_collision( OB1, OB2 ):
+		# print(OB1.name + ', ' + OB2.name  )
+		pass		
+
+	def herb_carn( herb, carn):
+		CTWCollisionDict.print_collision( herb, carn )
+
+	def herb_herb( herb1, herb2 ):
+		CTWCollisionDict.print_collision( herb1, herb2 )
+		#certain probability of mating?
+
+	def carn_carn( carn1, carn2 ):
+		CTWCollisionDict.print_collision( carn1, carn2 )
+		#certain probability of mating?
+
+	def bug_eye( bug, eye ):
+		CTWCollisionDict.print_collision( bug, eye)
+		#try using the superclass so can just detect color
+		#could always replace with one hot vector classification for the brain so an eye detects a specific type of bug
+
+	CollisionDict={ # look up which function to call when two objects of certain types collide
+		( CTOType.HERB, CTOType.CARN ): herb_carn,
+		( CTOType.HERB, CTOType.HERB): herb_herb,
+		( CTOType.CARN, CTOType.CARN ): carn_carn,
+		( CTOType.HERB, CTOType.EYE ): bug_eye,
+		( CTOType.CARN, CTOType.EYE ): bug_eye
+		}
 
 
 class CollisionTestWorld():
-	#create multiple collision collections
+
+	CTWDict = CTWCollisionDict()
+	Bodies = []
+	Eyes = []
+
+	class CTWEventType():
+		PHYSICAL_EMITTER = int(1)
+		PHYSICAL_DETECTOR = int(2)
+		VISUAL_EMITTER = int(3)
+		VISUAL_DETECTOR = int(4)
+
+	def handle_collision( Self, OB1, OB2 ):
+		Self.CTWDict.handle_collision( OB1, OB2 )
 
 	def __init__(Self):
-		PhysicalCollisions = Collisions()
-		VisualCollsions = Collisions()
+		#Set up two different collision lists
+		Self.PhysicalCollisions = Collisions( Self.handle_collision )
+		Self.VisualCollisions = Collisions( Self.handle_collision )
 
-	def register_physical_emitter()
-		pass
+	def register_collision_event( Self, collision_event_type, collision_object ):
+		#this abstracts the collision lists from the objects.  They just register for an event.  The world handles where it goes
+		if ( collision_event_type == Self.CTWEventType.PHYSICAL_EMITTER ):
+			Self.PhysicalCollisions.add_emitter( collision_object )
+		elif( collision_event_type == Self.CTWEventType.PHYSICAL_DETECTOR):
+			Self.PhysicalCollisions.add_detector( collision_object)
+		elif( collision_event_type == Self.CTWEventType.VISUAL_EMITTER ):
+			Self.VisualCollisions.add_emitter( collision_object )
+		elif( collision_event_type == Self.CTWEventType.VISUAL_EMITTER ):
+			Self.VisualCollisions.add_detector( collision_object )
+		else:
+			#print out error
+			pass
 
-	def register_visual_detector()
-		pass
+	def check_for_collisions( Self ):
+		Self.PhysicalCollisions.detect_collisions()
+		Self.VisualCollisions.detect_collisions()
 
-	def register_visual_emmitter()
-		pass
 
 	def add_bodies( Self ):
-		b1 = CollisionTestObject(Self, 0, 0, 10 )
-		b2 = CollisionsTestObject( Self, 5, 5, 10)
-		b2 = CollisionsTestObject( Self, 5, 5, 10)
+		#x, y, size 
+		locs = [(0,0,5), (7,0,5), (9,5,3), (6,3,2)]
+		ctr = 0
+
+		for pos in locs:
+			++ctr
+			name = "body" + str(ctr)
+			Self.Bodies.append( CollisionTestBody( Self, name, pos[0], pos[1], pos[2] ) )
 
 
+	def add_eyes( Self ):
+		#x, y, size 
+		locs = [(-2,0,2), (5,0,2), (0,-20, 2)]
+		ctr = 0
+
+		for pos in locs:
+			++ctr
+			name = "Eye" + str(ctr)
+			Self.Eyes.append( CollisionTestEye( Self, name, pos[0], pos[1], pos[2] ) )
 
 
-	#test constructor/destructor removal
+	def test_all( Self ):
+		#add the elements to the World
+		Self.add_bodies()
+		Self.add_eyes()
+		Self.check_for_collisions()
+
+		#See if they were added properly
+
+		#See if there are collisions
+
+		#Delete an item
+
+		#See if it was removed from the collision list
+
+		#See if there collisions
+
+		#Add another item
+		#handle two subclasses colliding....eg carn,herb
+
+
 
 
 
@@ -265,10 +324,6 @@ class CollisionTestWorld():
 
 	#test adding handler methods
 
-
-
-	#test collision detection
-
 	#test hitbox type checking
 
 	#test bad cases: empty lists, wrong types, no handler, no bounding box type
@@ -276,34 +331,12 @@ class CollisionTestWorld():
 
 	#test logging/printing
 
+	#for eyes, sound etc, register only the closest one if multiple collisions
 
-	def post_collision_processing ( Self ):
-		#loop through objects and delete them, convert them etc.
-		#if health < 0, delete.
-		#if was a bug, convert it to meat
-		#if it was a plant, just delete it
+if __name__ == "__main__":
+        g = CollisionTestWorld()
+        g.test_all()
 
-		#need to keep track of where in list when deleting so that when an item is deleted, the range is shortened.
-		list_len = len( Self.WorldObjects ) #starting lenght of the list of objects
-		i = 0 #index as to where we are in the list
-
-		#loop through every object in the list
-		while ( i < list_len ):
-			if ( Self.WorldObjects[i].health <= 0 ): #if the objects health is gone, deal with it.
-				co = Self.WorldObjects[i] #get the current object
-
-				#if it is a bug, then convert it to meat
-				if( co.type in { BWOType.HERB, BWOType.OMN, BWOType.CARN } ):
-			   		start_pos = co.get_abs_position() #get location of the dead bug
-			   		Self.WorldObjects.append( Meat( start_pos, "M"+ str(i) )) #create a meat object at same location
-			   		#list length hasn't changed because we are going to delete and add one
-				else:
-					list_len -= 1	#reduce the length of the list 
-
-				del Self.WorldObjects[i] #get rid of the object
-				#'i' should now point to the next one in the list because an item was removed so shouldn't have to increment
-			else:
-				i += 1 #manually increment index pointer because didn't delete the object
 
 
 	
