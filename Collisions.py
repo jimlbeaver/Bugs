@@ -36,8 +36,9 @@ Collision API
 
 class CollisionObject():
 
-	HITBOX_CIRCLE = int(1)
-	HITBOX_RECT	= int(2)
+	class HitBoxType():
+		HITBOX_CIRCLE = int(1)
+		HITBOX_RECT	= int(2)
 
 	def __init__( Self ):
 		Self.set_hitbox_type( Self )
@@ -60,19 +61,23 @@ class CollisionObject():
 		pass
 
 	def set_hitbox_type( Self ):
-		Self.hitbox_type = HITBOX_CIRCLE
+		Self.hitbox_type = Self.HitBoxType.HITBOX_CIRCLE
 
 	def is_this_me( Self, co ):
 		#check to see if the object to compare is itself or recursively its owner
-		pass
+		if( Self == co ): return True
+		else: return False
 
 class Collisions():
-	_emitters = []
-	_detectors = []
-	_enabled = False # can be used to ignore a certain type of collisions
 
 	def __init__( Self, handler_method ):
+		Self._emitters = []
+		Self._detectors = []
+		Self._enabled = False # can be used to ignore a certain type of collisions
 		Self._cb = handler_method
+
+	def __repr__( Self ):
+		return( 'Emitters(' + str(len( Self._emitters )) + '): ' + ' '.join(map(str, Self._emitters )) + '\n' + 'Detectors: ' + ' '.join(map(str, Self._detectors))) 
 
 	def enable_collsions( Self ):
 		Self._enabled = True
@@ -92,7 +97,7 @@ class Collisions():
 		pass
 
 	def print_collision( OB1, OB2 ):
-		#print( OB1.name + ', ' + OB2.name  )
+		print( OB1.name + ', ' + OB2.name  )
 		pass
 
 	def circle_collision( Self, CO1, CO2 ):	#takes two Circle Hitbox Objects in.
@@ -107,11 +112,11 @@ class Collisions():
 	def detect_collisions( Self ):
 		#loop through solid bodies
 		#call collision handlers on each object
-		for CO1 in Self._emitters:
-			for CO2 in Self._detectors:
-				if CO1 == CO2: continue #need to call isThisMe()
+		for CO1 in Self._detectors:
+			for CO2 in Self._emitters:
+				if CO1.is_this_me( CO2 ): continue #make sure the object is not part of the bug that owns it
 				elif Self.circle_collision(CO1, CO2): #replace with hitbox stuff
-					# print("Hit " + CO1.name + " and " + CO2.name )
+					print("Emitter " + CO1.name + " detected " + CO2.name )
 
 					#call the callback handler
 					Self._cb(CO1,CO2)
@@ -154,6 +159,9 @@ class CollisionTestObject( CollisionObject ):
 		Self.size = size
 		Self.World = CollisionTestWorld #handle back to container so can call instance methods on it.
 
+	def __repr__( Self ):
+		return Self.name
+
 	def get_abs_x( Self ):
 		return Self.x
 
@@ -166,10 +174,10 @@ class CollisionTestObject( CollisionObject ):
 
 class CollisionTestBody( CollisionTestObject ):
 
-	def __init__( Self, CTW, name, x, y, size ):
+	def __init__( Self, CTW, name, type, x, y, size ):
 		super().__init__( CTW, name, x, y, size )
-		Self.type = CTOType.HERB 
-		CTW.register_collision_event( CTW.CTWEventType.VISUAL_EMITTER , Self)
+		Self.type = type 
+		CTW.register_collision_event( CTW.CTWEventType.VISUAL_EMITTER, Self)
 		CTW.register_collision_event( CTW.CTWEventType.PHYSICAL_DETECTOR, Self )
 		CTW.register_collision_event( CTW.CTWEventType.PHYSICAL_EMITTER, Self )
 
@@ -196,9 +204,8 @@ class CollisionTestEye( CollisionTestObject ):
 
 class CTWCollisionDict():
 
-	def handle_collision( Self, OB1, OB2):
-		if (OB1.type > OB2.type ): Self.handle_dict(OB2, OB1) #order the keys for dict lookup
-		else: Self.handle_dict(OB1, OB2)
+	def handle_collision( Self, detector, emitter ):
+		Self.handle_dict( detector, emitter ) #the dector detected the emitter
 
 	def handle_dict( Self, OB1, OB2 ):
 		try:
@@ -207,12 +214,14 @@ class CTWCollisionDict():
 			print('No handler for: ' + OB1.name + ' T:' + str(OB1.type)	+ ", " + OB2.name + ' T:' + str(OB2.type))
 
 	def print_collision( OB1, OB2 ):
-		# print(OB1.name + ', ' + OB2.name  )
-		pass		
+		print( OB1.name + ' T:' + str(OB1.type)	+ ", " + OB2.name + ' T:' + str(OB2.type) )
 
 	def herb_carn( herb, carn):
 		CTWCollisionDict.print_collision( herb, carn )
 
+	def carn_herb( carn, herb):
+		CTWCollisionDict.print_collision( carn, herb )
+	
 	def herb_herb( herb1, herb2 ):
 		CTWCollisionDict.print_collision( herb1, herb2 )
 		#certain probability of mating?
@@ -230,6 +239,7 @@ class CTWCollisionDict():
 		( CTOType.HERB, CTOType.CARN ): herb_carn,
 		( CTOType.HERB, CTOType.HERB): herb_herb,
 		( CTOType.CARN, CTOType.CARN ): carn_carn,
+		( CTOType.CARN, CTOType.CARN ): carn_herb,
 		( CTOType.HERB, CTOType.EYE ): bug_eye,
 		( CTOType.CARN, CTOType.EYE ): bug_eye
 		}
@@ -258,32 +268,39 @@ class CollisionTestWorld():
 	def register_collision_event( Self, collision_event_type, collision_object ):
 		#this abstracts the collision lists from the objects.  They just register for an event.  The world handles where it goes
 		if ( collision_event_type == Self.CTWEventType.PHYSICAL_EMITTER ):
+#			print("Adding Physical Emitter: " + str(collision_object) )
 			Self.PhysicalCollisions.add_emitter( collision_object )
+
 		elif( collision_event_type == Self.CTWEventType.PHYSICAL_DETECTOR):
+#			print("Adding Physical Detector: " + str(collision_object) )
 			Self.PhysicalCollisions.add_detector( collision_object)
+
 		elif( collision_event_type == Self.CTWEventType.VISUAL_EMITTER ):
+#			print("Adding Visual Emitter: " + str(collision_object) )
 			Self.VisualCollisions.add_emitter( collision_object )
-		elif( collision_event_type == Self.CTWEventType.VISUAL_EMITTER ):
+
+		elif( collision_event_type == Self.CTWEventType.VISUAL_DETECTOR ):
+#			print("Adding Visual Detector: " + str(collision_object) )
 			Self.VisualCollisions.add_detector( collision_object )
 		else:
-			#print out error
-			pass
+			print( "Unsupported Event Type: " + collision_event_type )
+
 
 	def check_for_collisions( Self ):
 		Self.PhysicalCollisions.detect_collisions()
 		Self.VisualCollisions.detect_collisions()
+		pass
 
 
 	def add_bodies( Self ):
 		#x, y, size 
-		locs = [(0,0,5), (7,0,5), (9,5,3), (6,3,2)]
+		locs = [(CTOType.HERB,0,0,5), (CTOType.HERB, 7,0,5), (CTOType.CARN, 9,5,3), (CTOType.HERB,6,3,2)]
 		ctr = 0
 
 		for pos in locs:
-			++ctr
+			ctr += 1
 			name = "body" + str(ctr)
-			Self.Bodies.append( CollisionTestBody( Self, name, pos[0], pos[1], pos[2] ) )
-
+			Self.Bodies.append( CollisionTestBody( Self, name, pos[0], pos[1], pos[2], pos[3] ) )
 
 	def add_eyes( Self ):
 		#x, y, size 
@@ -291,22 +308,46 @@ class CollisionTestWorld():
 		ctr = 0
 
 		for pos in locs:
-			++ctr
+			ctr += 1
 			name = "Eye" + str(ctr)
 			Self.Eyes.append( CollisionTestEye( Self, name, pos[0], pos[1], pos[2] ) )
 
 
 	def test_all( Self ):
 		#add the elements to the World
+
+		print( "--- before any adds ---")
+		print( "Physical Collisions:" )
+		print( Self.PhysicalCollisions )
+		print( "Visual Collisions:" )
+		print( Self.VisualCollisions )
+		print()
+
 		Self.add_bodies()
+		print( "--- after add bodies ---")
+		print( "Physical Collisions:" )
+		print( Self.PhysicalCollisions )
+		print( "Visual Collisions:" )
+		print( Self.VisualCollisions )
+		print()
+
 		Self.add_eyes()
+		print( "--- after add eyes ---")
+		print( "Physical Collisions:" )
+		print( Self.PhysicalCollisions )
+		print( "Visual Collisions:" )
+		print( Self.VisualCollisions )
+		print()
+
 		Self.check_for_collisions()
+
+		#Test cases
 
 		#See if they were added properly
 
 		#See if there are collisions
 
-		#Delete an item
+		#Delete an item ... make sure it isn't something iterating over
 
 		#See if it was removed from the collision list
 
@@ -316,11 +357,7 @@ class CollisionTestWorld():
 		#handle two subclasses colliding....eg carn,herb
 
 
-
-
-
 	#test recursive isThisMe
-
 
 	#test adding handler methods
 
@@ -328,10 +365,11 @@ class CollisionTestWorld():
 
 	#test bad cases: empty lists, wrong types, no handler, no bounding box type
 
-
 	#test logging/printing
 
 	#for eyes, sound etc, register only the closest one if multiple collisions
+
+	
 
 if __name__ == "__main__":
         g = CollisionTestWorld()
